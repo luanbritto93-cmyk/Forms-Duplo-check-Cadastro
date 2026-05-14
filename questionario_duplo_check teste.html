@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Habilitação — Rotina de Duplo Check de Cadastros</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --azul: #0f3460;
+    --azul-medio: #1a5276;
+    --azul-claro: #d6eaf8;
+    --accent: #2e86c1;
+    --verde: #1e8449;
+    --verde-bg: #eafaf1;
+    --vermelho: #922b21;
+    --vermelho-bg: #fdedec;
+    --cinza: #f4f6f8;
+    --borda: #dde3ea;
+    --texto: #1a202c;
+    --texto-sec: #5a6473;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #eef2f7;
+    color: var(--texto);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    background: var(--azul);
+    color: #fff;
+    padding: 2rem 2rem 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  header::after {
+    content: '';
+    position: absolute;
+    right: -60px; top: -60px;
+    width: 260px; height: 260px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    right: 60px; bottom: -80px;
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.03);
+  }
+  .header-tag {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #85c1e9;
+    margin-bottom: .5rem;
+  }
+  header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.4rem, 3vw, 1.9rem);
+    font-weight: 400;
+    line-height: 1.25;
+    margin-bottom: .5rem;
+  }
+  header p {
+    font-size: 13px;
+    color: #a9cce3;
+    max-width: 480px;
+  }
+
+  .progress-wrap {
+    background: var(--azul-medio);
+    padding: .6rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .progress-bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: #85c1e9;
+    border-radius: 4px;
+    transition: width .4s ease;
+  }
+  .progress-label {
+    font-size: 12px;
+    color: #a9cce3;
+    white-space: nowrap;
+  }
+
+  main {
+    flex: 1;
+    max-width: 740px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 3rem;
+  }
+
+  .section-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--azul-claro);
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 1rem;
+  }
+
+  .q-card {
+    background: #fff;
+    border: 1px solid var(--borda);
+    border-radius: 14px;
+    padding: 1.75rem 2rem;
+    box-shadow: 0 2px 12px rgba(15,52,96,.06);
+    animation: fadeUp .3s ease both;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .q-num {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--texto-sec);
+    margin-bottom: .6rem;
+  }
+  .q-text {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.55;
+    margin-bottom: 1.5rem;
+    color: var(--texto);
+  }
+
+  .opt {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 13px 16px;
+    border: 1.5px solid var(--borda);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, transform .1s;
+    user-select: none;
+  }
+  .opt:hover:not(.disabled) { border-color: var(--accent); background: #f0f7fd; }
+  .opt:active:not(.disabled) { transform: scale(0.99); }
+  .opt.selected { border-color: var(--accent); background: #eaf4fb; }
+  .opt.correct  { border-color: var(--verde); background: var(--verde-bg); }
+  .opt.wrong    { border-color: var(--vermelho); background: var(--vermelho-bg); }
+  .opt.disabled { cursor: default; }
+
+  .opt-letter {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: 1.5px solid var(--borda);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600;
+    flex-shrink: 0;
+    transition: background .15s, border-color .15s, color .15s;
+    color: var(--texto-sec);
+  }
+  .opt.selected .opt-letter { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .opt.correct  .opt-letter { background: var(--verde); border-color: var(--verde); color: #fff; }
+  .opt.wrong    .opt-letter { background: var(--vermelho); border-color: var(--vermelho); color: #fff; }
+
+  .opt-text { font-size: 14px; line-height: 1.5; color: var(--texto); padding-top: 3px; }
+
+  .feedback-box {
+    margin-top: 1.25rem;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.55;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .feedback-box.correct { background: var(--verde-bg); color: #145a32; border: 1px solid #a9dfbf; }
+  .feedback-box.wrong   { background: var(--vermelho-bg); color: #641e16; border: 1px solid #f1948a; }
+  .feedback-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  .nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+    gap: 10px;
+  }
+  .btn {
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    border: 1.5px solid var(--borda);
+    background: #fff;
+    color: var(--texto);
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .btn:hover:not(:disabled) { background: var(--cinza); border-color: #b0bec5; }
+  .btn:active:not(:disabled) { transform: scale(0.98); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn.primary {
+    background: var(--azul);
+    color: #fff;
+    border-color: var(--azul);
+  }
+  .btn.primary:hover:not(:disabled) { background: var(--azul-medio); border-color: var(--azul-medio); }
+  .btn.check {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .btn.check:hover:not(:disabled) { background: #1a6fa0; }
+
+  /* Result */
+  .result-wrap { animation: fadeUp .4s ease both; }
+  .score-hero {
+    background: var(--azul);
+    color: #fff;
+    border-radius: 14px;
+    padding: 2.5rem 2rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .score-hero::before {
+    content:''; position:absolute; right:-40px; top:-40px;
+    width:180px; height:180px; border-radius:50%;
+    background: rgba(255,255,255,.05);
+  }
+  .score-big {
+    font-family: 'DM Serif Display', serif;
+    font-size: 64px;
+    font-weight: 400;
+    line-height: 1;
+    margin-bottom: .25rem;
+  }
+  .score-sub { font-size: 14px; color: #a9cce3; margin-bottom: 1.25rem; }
+  .result-badge {
+    display: inline-block;
+    padding: 8px 24px;
+    border-radius: 30px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .04em;
+  }
+  .result-badge.ok  { background: #eafaf1; color: #1e8449; }
+  .result-badge.nok { background: #fdedec; color: #922b21; }
+
+  .review-section h3 {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--texto-sec);
+    margin-bottom: 1rem;
+    padding-bottom: .5rem;
+    border-bottom: 1px solid var(--borda);
+  }
+  .review-item {
+    background: #fff;
+    border: 1px solid var(--borda);
+    border-left: 4px solid var(--borda);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: .75rem;
+  }
+  .review-item.c { border-left-color: var(--verde); }
+  .review-item.e { border-left-color: var(--vermelho); }
+  .review-q { font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--texto); }
+  .review-answer { font-size: 12px; color: #145a32; background: var(--verde-bg); padding: 5px 10px; border-radius: 6px; margin-top: 6px; }
+  .review-wrong  { font-size: 12px; color: #641e16; background: var(--vermelho-bg); padding: 5px 10px; border-radius: 6px; margin-top: 4px; }
+
+  .restart-wrap { text-align: center; margin-top: 2rem; }
+
+  @media (max-width: 520px) {
+    main { padding: 1.25rem 1rem 2rem; }
+    .q-card { padding: 1.25rem 1.25rem; }
+    header { padding: 1.5rem 1.25rem 1.25rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-tag">Bernhoeft · Claro S.A.</div>
+  <h1>Habilitação — Rotina de<br>Duplo Check de Cadastros</h1>
+  <p>Responda as 10 questões. Nota mínima para habilitação: 70% (7 acertos).</p>
+</header>
+
+<div class="progress-wrap">
+  <div class="progress-bar"><div class="progress-fill" id="prog" style="width:10%"></div></div>
+  <div class="progress-label" id="prog-label">1 / 10</div>
+</div>
+
+<main id="main"></main>
+
+<script>
+const Q = [
+  { section:"Fontes de dados", text:"Quais são as duas fontes principais utilizadas na rotina de duplo check de cadastros?",
+    opts:["Planilha VANESSA e Relatório de Contratos Ativos (ContractWeb)","E-mail de solicitação e sistema SAP","Relatório do HubSpot e planilha de matrículas","Sistema de RH e contrato jurídico digitalizado"],
+    answer:0, feedback:"A planilha VANESSA é o ponto de partida operacional, e o Relatório de Contratos Ativos (exportado do ContractWeb) é a base de referência para o cruzamento." },
+  { section:"Fontes de dados", text:"Ao gerar o Relatório de Contratos no ContractWeb, quais filtros obrigatórios devem ser selecionados?",
+    opts:["Qualquer contratante e qualquer grupo de área","Contratante: CLARO S.A. e Grupo de Área: Claro Mensal","Contratante: CLARO S.A. e Tipo de Serviço: Mobilização","Grupo de Área: Claro Mensal e Situação: Inativo"],
+    answer:1, feedback:"Os filtros obrigatórios são Contratante = CLARO S.A. e Grupo de Área = Claro Mensal. Além disso, marcar 'Exibir Inativos', 'Exibir Família' e 'Exibir SubFamília'." },
+  { section:"Tipo de terceirização", text:"A Claro S.A. solicitou o cadastro de uma empresa. O CNPJ informado tem o mesmo CNPJ raiz do contrato principal, mas com filial diferente. Qual deve ser o tipo de terceirização?",
+    opts:["Subcontratada","Contratante","Cessionária","Contratada"],
+    answer:2, feedback:"Quando o CNPJ raiz permanece o mesmo e apenas o final muda, o tipo correto é Cessionária — nunca Subcontratada, que é raramente aplicável em contratos Claro." },
+  { section:"Tipo de terceirização", text:"Ao filtrar a coluna 'Tipo Terceirização' na planilha VANESSA, você encontra vários registros marcados como 'Subcontratada' para a Claro. O que deve ser feito?",
+    opts:["Manter como está, pois subcontratada é um tipo válido","Excluir os registros sem avisar ninguém","Questionar cada caso — subcontratada é raramente aplicável em contratos Claro","Alterar automaticamente todos para 'Contratada'"],
+    answer:2, feedback:"A regra principal é: contratos solicitados pela Claro raramente são Subcontratada. Cada caso deve ser investigado antes de qualquer alteração." },
+  { section:"Campos obrigatórios", text:"Quais colunas do Relatório de Contratos Ativos NÃO podem ficar sem preenchimento?",
+    opts:["Responsável pelo Contrato e CEI","Família (coluna T) e SubFamília (coluna U)","Descrição do Contrato e Número da Ordem de Serviço","Valor do Serviço e Unidade"],
+    answer:1, feedback:"Família (T) e SubFamília (U) são campos obrigatórios. Sempre que estiverem vazios, é necessário retornar à solicitação original para identificar a classificação correta." },
+  { section:"Campos obrigatórios", text:"Você encontrou um contrato ativo com os campos Família e SubFamília vazios. Qual é o procedimento correto?",
+    opts:["Ignorar, pois esses campos são opcionais","Preencher com qualquer valor para não deixar em branco","Retornar à solicitação original do cadastro para identificar a classificação correta","Inativar o contrato até receber a informação"],
+    answer:2, feedback:"O procedimento é retornar à solicitação original para encontrar a família e subfamília corretas. Nunca preencher com valores genéricos ou inativar o contrato por isso." },
+  { section:"Inativação × encerramento", text:"A Claro envia um e-mail solicitando a inativação de um contrato. Qual é a boa prática recomendada?",
+    opts:["Inativar imediatamente conforme solicitado","Retornar o e-mail questionando se a intenção é inativar (remove o histórico) ou encerrar (mantém o histórico com data fim de vigência)","Encerrar o contrato sem questionar, pois é a opção mais segura","Aguardar 30 dias antes de qualquer ação"],
+    answer:1, feedback:"A inativação remove todo o histórico do sistema. O encerramento apenas define uma data fim de vigência, mantendo o histórico para tratamento de pendências. Sempre questione antes de inativar." },
+  { section:"Inativação × encerramento", text:"Qual a principal diferença entre 'inativação' e 'encerramento' de um contrato?",
+    opts:["São sinônimos — o efeito no sistema é o mesmo","Inativação mantém o histórico; encerramento remove tudo","Inativação remove todo o histórico do sistema; encerramento define data fim de vigência e mantém o histórico","Encerramento é definitivo; inativação permite reativação no mês seguinte"],
+    answer:2, feedback:"Inativação = remove histórico (irreversível na prática). Encerramento = define data fim de vigência, não gera novas competências, mas mantém o histórico para pendências." },
+  { section:"Mobilização", text:"Para contratos do tipo Claro Mensal, qual é o tipo de serviço padrão esperado?",
+    opts:["Mobilização de Trabalhadores","Trabalhista","Análise Previdenciária","Qualquer tipo de serviço é válido"],
+    answer:1, feedback:"O tipo de serviço padrão para contratos Claro Mensal é Trabalhista. A presença de Mobilização ativa nesses contratos representa risco operacional e deve ser investigada." },
+  { section:"Mobilização", text:"Durante o duplo check, você identifica um contrato Claro Mensal com mobilização ativa. O que deve ser feito?",
+    opts:["Nada — mobilização ativa é normal em qualquer contrato","Remover a mobilização sem comunicar ninguém","Acionar o responsável para correção imediata, pois há risco do fornecedor abrir mobilização no contrato errado","Encerrar o contrato imediatamente"],
+    answer:2, feedback:"Mobilização ativa em contrato Claro Mensal é um ponto de atenção: o fornecedor pode abrir no contrato errado e não cumprir o escopo correto. O responsável deve ser acionado imediatamente." }
+];
+
+const LETTERS = ['A','B','C','D'];
+let cur = 0, answers = new Array(Q.length).fill(null), revealed = new Array(Q.length).fill(false);
+
+function updateProgress(){
+  const pct = Math.round((cur+1)/Q.length*100);
+  document.getElementById('prog').style.width = pct+'%';
+  document.getElementById('prog-label').textContent = (cur+1)+' / '+Q.length;
+}
+
+function renderQuiz(){
+  updateProgress();
+  const q = Q[cur];
+  const opts = q.opts.map((o,i)=>{
+    let cls = 'opt';
+    if(revealed[cur]){
+      cls += ' disabled';
+      if(i===q.answer) cls += ' correct';
+      else if(answers[cur]===i) cls += ' wrong';
+    } else {
+      if(answers[cur]===i) cls += ' selected';
+    }
+    return `<div class="${cls}" onclick="choose(${i})">
+      <div class="opt-letter">${LETTERS[i]}</div>
+      <div class="opt-text">${o}</div>
+    </div>`;
+  }).join('');
+
+  const fb = revealed[cur] ? `<div class="feedback-box ${answers[cur]===q.answer?'correct':'wrong'}">
+    <span class="feedback-icon">${answers[cur]===q.answer?'✓':'✗'}</span>
+    <span><strong>${answers[cur]===q.answer?'Correto — ':'Incorreto — '}</strong>${q.feedback}</span>
+  </div>` : '';
+
+  const nextBtn = cur < Q.length-1
+    ? `<button class="btn primary" onclick="next()" ${answers[cur]===null?'disabled':''}>Próxima →</button>`
+    : `<button class="btn primary" onclick="finish()" ${answers[cur]===null?'disabled':''}>Ver resultado</button>`;
+
+  const checkBtn = !revealed[cur]
+    ? `<button class="btn check" onclick="check()" ${answers[cur]===null?'disabled':''}>Verificar resposta</button>`
+    : '';
+
+  document.getElementById('main').innerHTML = `
+    <div class="section-badge">${q.section}</div>
+    <div class="q-card">
+      <div class="q-num">Questão ${cur+1} de ${Q.length}</div>
+      <div class="q-text">${q.text}</div>
+      <div>${opts}</div>
+      ${fb}
+    </div>
+    <div class="nav">
+      <button class="btn" onclick="prev()" ${cur===0?'disabled':''}>← Anterior</button>
+      <div style="display:flex;gap:10px">${checkBtn}${nextBtn}</div>
+    </div>`;
+}
+
+function choose(i){ if(revealed[cur]) return; answers[cur]=i; renderQuiz(); }
+function check(){ if(answers[cur]===null) return; revealed[cur]=true; renderQuiz(); }
+function next(){ if(cur<Q.length-1){ cur++; renderQuiz(); } }
+function prev(){ if(cur>0){ cur--; renderQuiz(); } }
+
+function finish(){
+  document.getElementById('prog').style.width='100%';
+  document.getElementById('prog-label').textContent='Concluído';
+  const score = answers.reduce((s,a,i)=>s+(a===Q[i].answer?1:0),0);
+  const pct = Math.round(score/Q.length*100);
+  const ok = pct>=70;
+
+  const items = Q.map((q,i)=>{
+    const c = answers[i]===q.answer;
+    return `<div class="review-item ${c?'c':'e'}">
+      <div class="review-q">${c?'✓':'✗'} Q${i+1} — ${q.section}: ${q.text}</div>
+      ${!c?`<div class="review-wrong">Sua resposta: ${q.opts[answers[i]]??'Não respondida'}</div>
+             <div class="review-answer">Correta: ${q.opts[q.answer]}</div>`:''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('main').innerHTML = `
+    <div class="result-wrap">
+      <div class="score-hero">
+        <div class="score-big">${score}/${Q.length}</div>
+        <div class="score-sub">${pct}% de aproveitamento</div>
+        <div class="result-badge ${ok?'ok':'nok'}">${ok?'✓ Habilitado para a demanda':'✗ Requer revisão do manual'}</div>
+      </div>
+      <div class="review-section">
+        <h3>Revisão por questão</h3>
+        ${items}
+      </div>
+      <div class="restart-wrap">
+        <button class="btn primary" onclick="restart()">Refazer questionário</button>
+      </div>
+    </div>`;
+}
+
+function restart(){
+  cur=0; answers=new Array(Q.length).fill(null); revealed=new Array(Q.length).fill(false);
+  renderQuiz();
+}
+
+renderQuiz();
+</script>
+</body>
+</html>
